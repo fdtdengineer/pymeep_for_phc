@@ -13,5 +13,9 @@
 *.scr
 *.pyc
 
+# Keep documentation assets under version control
+!docs/images/*.png
+!docs/images/*.svg
+
 # Jupyter temporary files
 **/.ipynb_checkpoints/
