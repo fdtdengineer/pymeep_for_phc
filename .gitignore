@@ -1,0 +1,16 @@
+# Generated output directories
+**/out/
+**/fig/
+
+# Simulation and analysis outputs
+*.h5
+*.csv
+*.png
+*.svg
+*.html
+*.mp4
+*.gif
+*.scr
+
+# Jupyter temporary files
+**/.ipynb_checkpoints/
