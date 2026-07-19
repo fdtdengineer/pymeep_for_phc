@@ -9,16 +9,16 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import os
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
-os.chdir(OUT_DIR)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
+os.chdir(out_dir)
 
 #屈折率
-n_Air = 1
-n_Si = 2.6
+n_air = 1
+n_si = 2.6
 radius = 0.25 # a
 s0 = 0.5 # one side of triangular hole
 h = 20
@@ -38,7 +38,7 @@ geometry_lattice = mp.Lattice(size=mp.Vector3(1, 1),
                               basis2=mp.Vector3(1./2, -np.sqrt(3)/2))
 
 #構造
-#default_material = mp.Medium(epsilon=n_Si**2)
+#default_material = mp.Medium(epsilon=n_si**2)
 hole_triangular_up = [
         mp.Vector3(-1,-1)*s0,
         mp.Vector3(1,0)*s0,
@@ -53,17 +53,17 @@ hole_triangular2 = [
 radius_pole = 0.15
 s1 = s0*0.7
 geometry = [
-    mp.Block(material=mp.Medium(epsilon=n_Si**2),
+    mp.Block(material=mp.Medium(epsilon=n_si**2),
              size=mp.Vector3(mp.inf, mp.inf)),
-    #mp.Cylinder(radius, material=mp.Medium(epsilon=n_Air**2)),
+    #mp.Cylinder(radius, material=mp.Medium(epsilon=n_air**2)),
     mp.Prism(hole_triangular2, center=mp.Vector3(0), height=h,
-            material=mp.Medium(epsilon=n_Air**2)),
+            material=mp.Medium(epsilon=n_air**2)),
     mp.Cylinder(radius_pole, center=mp.Vector3(0.5, -0.5)*s1, 
-                material=mp.Medium(epsilon=n_Air**2)),
+                material=mp.Medium(epsilon=n_air**2)),
     mp.Cylinder(radius_pole, center=mp.Vector3(0.5,    1)*s1, 
-                material=mp.Medium(epsilon=n_Air**2)),
+                material=mp.Medium(epsilon=n_air**2)),
     mp.Cylinder(radius_pole, center=mp.Vector3( -1, -0.5)*s1, 
-                material=mp.Medium(epsilon=n_Air**2)),
+                material=mp.Medium(epsilon=n_air**2)),
 ]
 
 
@@ -143,7 +143,7 @@ ax.set_xticklabels(tick_labs, size=fs)
 ax.set_ylabel('frequency (c/a)', size=fs)
 ax.grid(True)
 plt.tick_params(labelsize=fs)
-#plt.savefig(FIG_DIR / "2D_pillar_honeycomb_π_6_normFreq.png", bbox_inches="tight")
+#plt.savefig(fig_dir / "2D_pillar_honeycomb_π_6_normFreq.png", bbox_inches="tight")
 
 plt.show()
 

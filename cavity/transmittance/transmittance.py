@@ -15,7 +15,7 @@ if True:
     plt.rcParams['ytick.direction'] = 'in'#y軸の目盛線が内向き('in')か外向き('out')か双方向か('inout')
 
 
-class MeepTransmittance:
+class meep_transmittance:
     def __init__(
             self, 
             sim=[],
@@ -141,7 +141,7 @@ class MeepTransmittance:
 
 
 if __name__ == "__main__":
-    cls_ref = MeepTransmittance(dpml=1)
+    cls_ref = meep_transmittance(dpml=1)
     cls_ref.get_reference_transmittance()
     cls_ref.plot_reference_transmittance()
 

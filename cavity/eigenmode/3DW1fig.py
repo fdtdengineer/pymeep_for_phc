@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
 
 if True:
     import geometry
@@ -90,7 +90,7 @@ arr_wg = [
 ]
 
 # Photonics crystal cavity
-wm = geometry.WidthModulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
+wm = geometry.width_modulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
 arr_obj = parse_to_meep.parse_geometry(wm, thick_slab=hslab)
 
 # All Geometry
@@ -174,12 +174,12 @@ def compress_3d_array(arr, n_compress=4):
 
 eps_data_compressed = compress_3d_array(eps_data, n_compress=4)
 nx, ny, nz = eps_data_compressed.shape
-X, Y, Z = np.mgrid[-nx:nx:nx*1j, -ny:ny:ny*1j, -nz:nz:nz*1j]
+x, y, z = np.mgrid[-nx:nx:nx*1j, -ny:ny:ny*1j, -nz:nz:nz*1j]
 import plotly.graph_objects as go
 fig = go.Figure(data=go.Volume(
-    x=X.flatten(),
-    y=Y.flatten(),
-    z=Z.flatten(),
+    x=x.flatten(),
+    y=y.flatten(),
+    z=z.flatten(),
     value=eps_data.flatten(),
     isomin=1.2,
     isomax=15,
@@ -187,11 +187,11 @@ fig = go.Figure(data=go.Volume(
     #surface_count=21, # needs to be a large number for good volume rendering
     )
 )
-fig.write_html(str(OUT_DIR / "geometry3DW1.html"))
-fig.write_image(str(FIG_DIR / "geometry3DW1.png"))
+fig.write_html(str(out_dir / "geometry3DW1.html"))
+fig.write_image(str(fig_dir / "geometry3DW1.png"))
 fig.show()
     
-#pd.DataFrame(eps_data_compressed[:,:,8]).to_csv(OUT_DIR / "hoge.csv")
+#pd.DataFrame(eps_data_compressed[:,:,8]).to_csv(out_dir / "hoge.csv")
 
 
 
@@ -207,12 +207,12 @@ freqs = np.array(mp.get_flux_freqs(trans_out))
 psd_out = np.array(mp.get_fluxes(trans_out))
 
 df_phcraw = pd.DataFrame(np.array([freqs, psd_out]).T, columns=["freq","transmittance"])
-df_phcraw.to_csv(OUT_DIR / "transmittance_raw_3DW1waveguide.csv")
+df_phcraw.to_csv(out_dir / "transmittance_raw_3DW1waveguide.csv")
 
 
 
 # reference
-cls_ref = transmittance.MeepTransmittance(
+cls_ref = transmittance.meep_transmittance(
     fcen=fcen, 
     df=df, 
     nfreq=nfreq, 
@@ -225,9 +225,9 @@ freqs_ref, psd_ref = cls_ref.get_reference_transmittance()
 lattice_const = 400
 wl = lattice_const / freqs_ref
 df_ref = pd.DataFrame(np.array([freqs_ref, wl, psd_ref]).T, columns=["freq","wl","transmittance"])
-df_ref.to_csv(OUT_DIR / "transmittance_3D_refwaveguide.csv")
+df_ref.to_csv(out_dir / "transmittance_3D_refwaveguide.csv")
 df_phc = pd.DataFrame(np.array([freqs_ref, wl, psd_out / psd_ref]).T, columns=["freq","wl","transmittance"])
-df_phc.to_csv(OUT_DIR / "transmittance_3DW1waveguide.csv")
+df_phc.to_csv(out_dir / "transmittance_3DW1waveguide.csv")
 
 # plot
 plt.figure(figsize=(8,6))
@@ -237,7 +237,7 @@ plt.ylabel("Intensity")
 plt.yscale("log")
 plt.legend()
 plt.tight_layout()
-plt.savefig(FIG_DIR / "transmittance_3DW1waveguide.svg")
+plt.savefig(fig_dir / "transmittance_3DW1waveguide.svg")
 plt.show()
 
 
@@ -248,7 +248,7 @@ plt.ylabel("Intensity")
 plt.yscale("log")
 plt.legend()
 plt.tight_layout()
-plt.savefig(FIG_DIR / "transmittance_wl_3DW1waveguide.svg")
+plt.savefig(fig_dir / "transmittance_wl_3DW1waveguide.svg")
 plt.show()
 
 

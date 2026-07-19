@@ -40,7 +40,7 @@ t_after_sources=3000
 # 2D cavity geometry
 cell = mp.Vector3(ny+pml_buffer, (nx+pml_buffer/2)*np.sqrt(3),hall)
 blk = mp.Block(size=mp.Vector3(ny+pml_buffer, (nx+pml_buffer/2)*np.sqrt(3), hslab), material=mp.Medium(epsilon=eps_r))
-ld = geometry.LineDefect(a, nx, ny, offset_x, offset_y, n_cavity, barrier, wgi, holeshift)
+ld = geometry.line_defect(a, nx, ny, offset_x, offset_y, n_cavity, barrier, wgi, holeshift)
 arr_obj = parse_to_meep.parse_geometry(ld, thick_slab=hslab)
 arr_geometry = [blk] + arr_obj
 
@@ -88,13 +88,13 @@ sim.reset_meep()
 sim.run(mp.after_sources(h), until_after_sources=t_after_sources)
 
 f = [m.freq for m in h.modes]
-Q = [m.Q for m in h.modes]
+q = [m.q for m in h.modes]
 
 ##### Plot eigen-modes #####
-for fiter, qiter in zip(f, Q):
+for fiter, qiter in zip(f, q):
     print(f"Resonant frequency: {fiter}, Q: {qiter}")
 
-df_results = pd.DataFrame(np.array([f,Q]).T)
+df_results = pd.DataFrame(np.array([f,q]).T)
 print(df_results)
 print("Done")
 
@@ -122,8 +122,8 @@ h_cavity = mp.Harminv(mp.Ey, mp.Vector3(0.5,0.,0), fcen_cavity, df_cavity)
 sim_cavity.run(mp.after_sources(h_cavity), until_after_sources=t_after_sources)
 
 f_cavity = [m.freq for m in h_cavity.modes]
-Q_cavity = [m.Q for m in h_cavity.modes]
-df_cavity_results = pd.DataFrame(np.array([f_cavity,Q_cavity]).T)
+q_cavity = [m.q for m in h_cavity.modes]
+df_cavity_results = pd.DataFrame(np.array([f_cavity,q_cavity]).T)
 
 f = plt.figure(dpi=150)
 sim_cavity.plot2D(ax=f.gca(), fields=mp.Hz)
@@ -134,7 +134,7 @@ print("Done")
 
 
 # %%
-Ey=sim.get_efield_y()
-arr = Ey[:,:,64].T
+ey=sim.get_efield_y()
+arr = ey[:,:,64].T
 vmax = np.max(arr) /100
 plt.imshow(arr,cmap="bwr", vmax=vmax, vmin=-vmax)

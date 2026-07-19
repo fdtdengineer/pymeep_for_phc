@@ -12,7 +12,7 @@ if True:
     plt.rcParams['ytick.direction'] = 'in'#y軸の目盛線が内向き('in')か外向き('out')か双方向か('inout')
 
 
-class GeometryPhC:
+class photonic_crystal_geometry:
     dict_geometry_mp = {
         "circle":["radius"],
         }
@@ -26,7 +26,7 @@ class GeometryPhC:
         return self.dict_kargs
 
 
-class LineDefect(GeometryPhC):
+class line_defect(photonic_crystal_geometry):
     def __init__(self, a, nx, ny, offset_x, offset_y, n_cavity, len_barrier, wgi, holeshift, radius=0.25):
         # a: lattice constant
         # nx, ny: number of holes in x and y directions
@@ -132,7 +132,7 @@ class LineDefect(GeometryPhC):
         plt.show()
         
 
-class WidthModulated(GeometryPhC):
+class width_modulated(photonic_crystal_geometry):
     def __init__(self, a, nx, ny, offset_x, offset_y, len_barrier, wgo, wgi, holeshift, radius=0.25):
         # a: lattice constant
         # self.nx, self.ny: number of holes in x and y directions
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     wgi = 0 #1.1
     holeshift = 0.2
 
-    ld = LineDefect(a, nx, ny, offset_x, offset_y, n_cavity, barrier, wgi, holeshift)
+    ld = line_defect(a, nx, ny, offset_x, offset_y, n_cavity, barrier, wgi, holeshift)
     ld.plot_geometry()
     """
     a = 1 # 0.4
@@ -252,7 +252,7 @@ if __name__ == "__main__":
     wgi = 1.1
     holeshift = 0.003 / 0.4
 
-    wm = WidthModulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
+    wm = width_modulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
     wm.plot_geometry()
     
     print("Done")

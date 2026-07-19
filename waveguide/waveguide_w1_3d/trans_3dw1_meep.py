@@ -2,7 +2,7 @@
 # mpirun -np 8 python test/transmittance_3dw1wg/trans_3dw1_meep.py
 
 """
-Standalone version of transmittance_3DW1waveguide.py with the PhC geometry
+Standalone version of transmittance_3dw1waveguide.py with the PhC geometry
 classes and the Meep parser inlined.
 
 This removes the local-file dependencies:
@@ -21,11 +21,11 @@ import pandas as pd
 import meep as mp
 import matplotlib.pyplot as plt
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
 fs = 18
 plt.rcParams.update({
     'font.family': 'Liberation Sans',
@@ -39,7 +39,7 @@ plt.rcParams.update({
 # -----------------------------------------------------------------------------
 # Inlined from geometry.py
 # -----------------------------------------------------------------------------
-class GeometryPhC:
+class photonic_crystal_geometry:
     """Base class for photonic-crystal hole-position generators."""
 
     dict_geometry_mp = {
@@ -59,7 +59,7 @@ class GeometryPhC:
         return self.dict_kargs
 
 
-class WidthModulated(GeometryPhC):
+class width_modulated(photonic_crystal_geometry):
     def __init__(
         self,
         a,
@@ -176,7 +176,7 @@ class WidthModulated(GeometryPhC):
 # -----------------------------------------------------------------------------
 # Inlined from parse_to_meep.py
 # -----------------------------------------------------------------------------
-DICT_GEOMETRY_MP = {
+dict_geometry_mp = {
     "circle": mp.Cylinder,
     "triangle": mp.Prism,
     "block": mp.Block,
@@ -184,13 +184,13 @@ DICT_GEOMETRY_MP = {
 
 
 def parse_geometry(obj_phc, thick_slab=0):
-    """Convert a GeometryPhC-like object into a flat list of Meep objects."""
+    """Convert a geometry_phc-like object into a flat list of Meep objects."""
     arr_obj = []
     dict_geometry = obj_phc.get_geometry()
     dict_kargs = obj_phc.get_kargs()
 
     for key, npr_geometry in dict_geometry.items():
-        ptr_mpobj = DICT_GEOMETRY_MP[key]
+        ptr_mpobj = dict_geometry_mp[key]
         kargs = dict_kargs[key]
         list_obj = []
 
@@ -206,7 +206,7 @@ def parse_geometry(obj_phc, thick_slab=0):
 # -----------------------------------------------------------------------------
 # Inlined from transmittance.py
 # -----------------------------------------------------------------------------
-class MeepTransmittance:
+class meep_transmittance:
     """Reference straight-waveguide transmittance calculator."""
 
     def __init__(
@@ -391,7 +391,7 @@ def main():
     ]
 
     # Photonic crystal cavity
-    wm = WidthModulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
+    wm = width_modulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
     arr_obj = parse_geometry(wm, thick_slab=hslab)
 
     # All geometry
@@ -440,10 +440,10 @@ def main():
     psd_out = np.array(mp.get_fluxes(trans_out))
 
     df_phcraw = pd.DataFrame(np.array([freqs, psd_out]).T, columns=["freq", "transmittance"])
-    df_phcraw.to_csv(OUT_DIR / "transmittance_raw_3DW1waveguide.csv", index=False)
+    df_phcraw.to_csv(out_dir / "transmittance_raw_3DW1waveguide.csv", index=False)
 
     # Reference
-    cls_ref = MeepTransmittance(
+    cls_ref = meep_transmittance(
         dim=3,
         area_z=h,
         thick_slab=hslab,
@@ -467,11 +467,11 @@ def main():
     lattice_const = 400
     wl = lattice_const / freqs_ref
     df_ref = pd.DataFrame(np.array([freqs_ref, wl, psd_ref]).T, columns=["freq", "wl", "transmittance"])
-    df_ref.to_csv(OUT_DIR / "transmittance_3D_refwaveguide.csv", index=False)
+    df_ref.to_csv(out_dir / "transmittance_3D_refwaveguide.csv", index=False)
 
     trans_norm = psd_out / psd_ref
     df_phc = pd.DataFrame(np.array([freqs_ref, wl, trans_norm]).T, columns=["freq", "wl", "transmittance"])
-    df_phc.to_csv(OUT_DIR / "transmittance_3DW1waveguide.csv", index=False)
+    df_phc.to_csv(out_dir / "transmittance_3DW1waveguide.csv", index=False)
 
     # Plot frequency-domain transmittance
     plt.figure(figsize=(8, 6))
@@ -481,7 +481,7 @@ def main():
     plt.yscale("log")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(FIG_DIR / "transmittance_3DW1waveguide.svg")
+    plt.savefig(fig_dir / "transmittance_3DW1waveguide.svg")
     plt.show()
 
     # Plot wavelength-domain transmittance
@@ -492,7 +492,7 @@ def main():
     plt.yscale("log")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(FIG_DIR / "transmittance_wl_3DW1waveguide.svg")
+    plt.savefig(fig_dir / "transmittance_wl_3DW1waveguide.svg")
     plt.show()
 
 

@@ -3,11 +3,11 @@ import math
 
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
 
 a = 0.4
 nx = 14
@@ -17,7 +17,7 @@ position_y = 12900*1
 shift_x = 100
 shift_y = 0
 layer = 1
-Nx = 1
+num_periods_x = 1
 cavity = 3
 barrier = 4
 wgi = 1.05
@@ -26,11 +26,11 @@ obj_b1_r = "C:\\Users\\fkh\\CAD\\waveguide_bottom1_right.dwg"
 obj_t1_l = "C:\\Users\\fkh\\CAD\\waveguide_top1_left.dwg"
 obj_t1_r = "C:\\Users\\fkh\\CAD\\waveguide_top1_right.dwg"
 
-def waveguide(a, nx, ny, position_x, position_y, shift_x, shift_y, layer, Nx, cavity, barrier, wgi, obj_b1_l, obj_b1_r, obj_t1_l, obj_t1_r):
+def waveguide(a, nx, ny, position_x, position_y, shift_x, shift_y, layer, num_periods_x, cavity, barrier, wgi, obj_b1_l, obj_b1_r, obj_t1_l, obj_t1_r):
 	output = list()
 
 #PhC接続部分
-	for i in range(Nx):
+	for i in range(num_periods_x):
 		position_xi = position_x + shift_x*(i)
 		position_yi = position_y + shift_y*(i)
 
@@ -159,15 +159,15 @@ def waveguide(a, nx, ny, position_x, position_y, shift_x, shift_y, layer, Nx, ca
 	barrier_str = str(barrier)
 	wgi_str = str(wgi)
 	cavity_name = str(cavity)
-	X_offset_str = str(position_x)
-	Y_offset_str = str(position_y)
+	x_offset_str = str(position_x)
+	y_offset_str = str(position_y)
 
-	filename = "Waveguide_L" + cavity_name  + "_a" + lattice_const + "_c" + barrier_str + "_wgi" + wgi_str + "_spoint[" + X_offset_str + "," + Y_offset_str + "].scr"
+	filename = "waveguide_l" + cavity_name  + "_a" + lattice_const + "_c" + barrier_str + "_wgi" + wgi_str + "_spoint[" + x_offset_str + "," + y_offset_str + "].scr"
 
-	f = open(OUT_DIR / filename, 'w')	#ファイル書き出し
+	f = open(out_dir / filename, 'w') #ファイル書き出し
 	for i in range(0,len(output)):
 		f.write(output[i] + "\n")
 	f.close()
 	print("Done.")
 
-#waveguide(a, nx, ny, position_x, position_y, shift_x, shift_y, layer, Nx, cavity, barrier, wgi, obj_b1_l, obj_b1_r, obj_t1_l, obj_t1_r)
+#waveguide(a, nx, ny, position_x, position_y, shift_x, shift_y, layer, num_periods_x, cavity, barrier, wgi, obj_b1_l, obj_b1_r, obj_t1_l, obj_t1_r)

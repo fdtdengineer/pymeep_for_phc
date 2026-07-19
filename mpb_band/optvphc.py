@@ -7,16 +7,16 @@ import numpy as np
 from pathlib import Path
 import os
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
-os.chdir(OUT_DIR)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
+os.chdir(out_dir)
 
 # configuration
-n_Air = 1
-n_Si = 3.48
+n_air = 1
+n_si = 3.48
 a = 1
 num_bands = 3 #計算する固有周波数の数
 resolution = 16 #メッシュの細かさ
@@ -37,12 +37,12 @@ def gap_tri(h = 1.2*a, r1 = 0.14*a, r2 = 0.38*a):
     geometry = [
         mp.Block(material=mp.Medium(epsilon=1),
                 size=mp.Vector3(mp.inf, mp.inf, 10*h)),
-        mp.Block(material=mp.Medium(epsilon=n_Si**2),
+        mp.Block(material=mp.Medium(epsilon=n_si**2),
                 size=mp.Vector3(mp.inf, mp.inf, h)),
         mp.Cylinder(r1, center=mp.Vector3(2, 1)/3, 
-                    material=mp.Medium(epsilon=n_Air**2)),
+                    material=mp.Medium(epsilon=n_air**2)),
         mp.Cylinder(r2, center=mp.Vector3(1, 2)/3, 
-                    material=mp.Medium(epsilon=n_Air**2)),
+                    material=mp.Medium(epsilon=n_air**2)),
     ]
 
     #ブリルアンゾーン
@@ -72,28 +72,28 @@ def gap_tri(h = 1.2*a, r1 = 0.14*a, r2 = 0.38*a):
                                 mpb.output_efield_z))
     te_freqs = ms.all_freqs
 
-    idx_K = 0#num_k+1
-    idx_M = 1#2*(num_k+1)
+    idx_k = 0#num_k+1
+    idx_m = 1#2*(num_k+1)
 
-    f_te1_K = te_freqs[idx_K,0]
-    f_te2_K = te_freqs[idx_K,1]
-    f_te1_M = te_freqs[idx_M,0]
-    f_te2_M = te_freqs[idx_M,1]
-    f_tm1_K = tm_freqs[idx_K,0]
-    f_tm2_K = tm_freqs[idx_K,1]
-    f_tm1_M = tm_freqs[idx_M,0]
-    f_tm2_M = tm_freqs[idx_M,1]
+    f_te1_k = te_freqs[idx_k,0]
+    f_te2_k = te_freqs[idx_k,1]
+    f_te1_m = te_freqs[idx_m,0]
+    f_te2_m = te_freqs[idx_m,1]
+    f_tm1_k = tm_freqs[idx_k,0]
+    f_tm2_k = tm_freqs[idx_k,1]
+    f_tm1_m = tm_freqs[idx_m,0]
+    f_tm2_m = tm_freqs[idx_m,1]
 
     lap = [0]*6
     # Bandgap of TE, TM
-    lap[0] = min(f_tm2_K, f_tm2_M) - max(f_tm1_K, f_tm1_M)
-    lap[1] = min(f_te2_K, f_te2_M) - max(f_te1_K, f_te1_M)
+    lap[0] = min(f_tm2_k, f_tm2_m) - max(f_tm1_k, f_tm1_m)
+    lap[1] = min(f_te2_k, f_te2_m) - max(f_te1_k, f_te1_m)
     # Overlap bandgap between band 1 and 2
-    lap[2] = min(f_tm2_K, f_tm2_M) - max(f_te1_K, f_te1_M)
-    lap[3] = min(f_te2_K, f_te2_M) - max(f_tm1_K, f_tm1_M)
+    lap[2] = min(f_tm2_k, f_tm2_m) - max(f_te1_k, f_te1_m)
+    lap[3] = min(f_te2_k, f_te2_m) - max(f_tm1_k, f_tm1_m)
     
-    lap[4] = max(f_tm2_K, f_tm2_M) - min(f_te1_K, f_te1_M)
-    lap[5] = max(f_te2_K, f_te2_M) - min(f_tm1_K, f_tm1_M)
+    lap[4] = max(f_tm2_k, f_tm2_m) - min(f_te1_k, f_te1_m)
+    lap[5] = max(f_te2_k, f_te2_m) - min(f_tm1_k, f_tm1_m)
     
     minlap = min(lap)
     print("\n\n\n\n\n\n\n")
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
 
     import pandas as pd
-    pd.DataFrame(res.x).to_csv(OUT_DIR / "opt_result.csv")
+    pd.DataFrame(res.x).to_csv(out_dir / "opt_result.csv")
 
     print("Done!")
 

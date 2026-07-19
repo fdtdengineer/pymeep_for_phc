@@ -11,6 +11,7 @@
 *.mp4
 *.gif
 *.scr
+*.pyc
 
 # Jupyter temporary files
 **/.ipynb_checkpoints/

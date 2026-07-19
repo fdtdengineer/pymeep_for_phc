@@ -4,11 +4,11 @@ import itertools
 
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
 
 #PhC 1ユニットを作る
 def unit_1(a, nx, ny, x_offset, y_offset, layer, obj, cavity, barrier, wgi, hole_shift):
@@ -61,10 +61,10 @@ def unit_1(a, nx, ny, x_offset, y_offset, layer, obj, cavity, barrier, wgi, hole
 					x = x_center + x_shift + 2*x_shift *j + wgi_shift
 				else:
 					x = x_center + x_shift + 2*x_shift *j
-				#print("-insert")
-				#print(obj)
-				#print("{:.4f},{:.4f}".format(x, y))
-				#print("\n\n")
+    #print("-insert")
+    #print(obj)
+    #print("{:.4f},{:.4f}".format(x, y))
+    #print("\n\n")
 				output.append("-insert")
 				output.append(obj)
 				output.append("{:.4f},{:.4f}".format(x, y))
@@ -80,35 +80,35 @@ def unit(a, nx, ny, x_offset, y_offset, layer, obj, cavity, barrier, wgi, hole_s
 	cavity_name = str(cavity)
 	filename = "L" + cavity_name  + "_a" + lattice_const + "_c" + barrier_str + "_wgi" + wgi_str + ".scr"
 
-	f = open(OUT_DIR / filename, 'w')	#ファイル書き出し
+	f = open(out_dir / filename, 'w') #ファイル書き出し
 	for i in range(0,len(output)):
 		f.write(output[i] + "\n")
 	f.close()
 
 
 #PhCを並べる
-def PhC_arrange(a, nx, ny, layer, obj, cavity, barrier, wgi, Nx, Ny, X_shift, Y_shift, X_offset, Y_offset, hole_shift):
+def arrange_photonic_crystal(a, nx, ny, layer, obj, cavity, barrier, wgi, num_units_x, num_units_y, x_shift, y_shift, x_offset, y_offset, hole_shift):
 	output = list()
-	for j in range(Ny):
-		for i in range(Nx):
-			x_offset = X_offset + X_shift*i
-			y_offset = Y_offset + Y_shift*j
-			output.append(unit_1(a, nx, ny, x_offset, y_offset, layer, obj, cavity, barrier, wgi, hole_shift))
+	for j in range(num_units_y):
+		for i in range(num_units_x):
+			unit_x_offset = x_offset + x_shift*i
+			unit_y_offset = y_offset + y_shift*j
+			output.append(unit_1(a, nx, ny, unit_x_offset, unit_y_offset, layer, obj, cavity, barrier, wgi, hole_shift))
 
 	out = list(itertools.chain.from_iterable(output))
 
 	lattice_const = str(int(a*1000))
 	barrier_str = str(barrier)
 	wgi_str = str(wgi)
-	N_x = str(Nx)
-	N_y = str(Ny)
-	X_offset_str = str(X_offset)
-	Y_offset_str = str(Y_offset)
+	n_x = str(num_units_x)
+	n_y = str(num_units_y)
+	x_offset_str = str(x_offset)
+	y_offset_str = str(y_offset)
 
 	cname = str(cavity)
-	filename = "L" + cname + "_a" + lattice_const + "_c" + barrier_str + "_wgi" + wgi_str + "_spoint[" + X_offset_str + "," + Y_offset_str + "]_arrange[" + N_x + "," + N_y + "].scr"
+	filename = "L" + cname + "_a" + lattice_const + "_c" + barrier_str + "_wgi" + wgi_str + "_spoint[" + x_offset_str + "," + y_offset_str + "]_arrange[" + n_x + "," + n_y + "].scr"
 
-	f = open(OUT_DIR / filename, 'w')	#ファイル書き出し
+	f = open(out_dir / filename, 'w') #ファイル書き出し
 	for i in range(0,len(out)):
 		f.write(out[i] + "\n")
 	f.close()

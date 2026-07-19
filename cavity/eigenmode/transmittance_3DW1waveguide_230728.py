@@ -72,7 +72,7 @@ arr_wg = [
 ]
 
 # Photonics crystal cavity
-wm = geometry.WidthModulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
+wm = geometry.width_modulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
 arr_obj = parse_to_meep.parse_geometry(wm, thick_slab=hslab)
 
 # All Geometry
@@ -127,7 +127,7 @@ plt.show()
 
 #from mayavi import mlab
 #s = mlab.contour3d(eps_data, colormap="YlGnBu")
-#filename = "geometry_PhC"
+#filename = "geometry_phc"
 #mlab.savefig(filename + ".png")
 
 
@@ -143,7 +143,7 @@ psd_out = np.array(mp.get_fluxes(trans_out))
 
 
 # reference
-cls_ref = transmittance.MeepTransmittance(
+cls_ref = transmittance.meep_transmittance(
     fcen=fcen, 
     df=df, 
     nfreq=nfreq, 

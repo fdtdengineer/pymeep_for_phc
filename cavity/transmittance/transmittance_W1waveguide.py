@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-FIG_DIR = SCRIPT_DIR / "fig"
-OUT_DIR = SCRIPT_DIR / "out"
-FIG_DIR.mkdir(exist_ok=True)
-OUT_DIR.mkdir(exist_ok=True)
+script_dir = Path(__file__).resolve().parent
+fig_dir = script_dir / "fig"
+out_dir = script_dir / "out"
+fig_dir.mkdir(exist_ok=True)
+out_dir.mkdir(exist_ok=True)
 
 if True:
     import geometry
@@ -75,7 +75,7 @@ arr_wg = [
 ]
 
 # Photonics crystal cavity
-wm = geometry.WidthModulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
+wm = geometry.width_modulated(a, nx, ny, offset_x, offset_y, barrier, wgo, wgi, holeshift)
 arr_obj = parse_to_meep.parse_geometry(wm)
 
 # All Geometry
@@ -130,14 +130,14 @@ psd_out = np.array(mp.get_fluxes(trans_out))
 
 
 # reference
-cls_ref = transmittance.MeepTransmittance(dim=2,fcen=fcen, df=df, nfreq=nfreq, resolution=resolution,  thres_conv=thres_conv)
+cls_ref = transmittance.meep_transmittance(dim=2,fcen=fcen, df=df, nfreq=nfreq, resolution=resolution,  thres_conv=thres_conv)
 freqs_ref, psd_ref = cls_ref.get_reference_transmittance()
 
 
 lattice_const = 400
 wl = lattice_const / freqs_ref
 df = pd.DataFrame(np.array([freqs_ref, wl, psd_out / psd_ref]).T, columns=["freq","wl","transmittance"])
-df.to_csv(OUT_DIR / "transmittance_W1waveguide.csv")
+df.to_csv(out_dir / "transmittance_W1waveguide.csv")
 
 lattice_const = 400
 wl = lattice_const / freqs_ref
@@ -150,7 +150,7 @@ plt.ylabel("Intensity")
 plt.yscale("log")
 plt.legend()
 plt.tight_layout()
-plt.savefig(FIG_DIR / "transmittance_W1waveguide.svg")
+plt.savefig(fig_dir / "transmittance_W1waveguide.svg")
 plt.show()
 
 
@@ -161,7 +161,7 @@ plt.ylabel("Intensity")
 plt.yscale("log")
 plt.legend()
 plt.tight_layout()
-plt.savefig(FIG_DIR / "transmittance_wl_W1waveguide.svg")
+plt.savefig(fig_dir / "transmittance_wl_W1waveguide.svg")
 plt.show()
 
 
