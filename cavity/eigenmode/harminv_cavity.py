@@ -1,4 +1,8 @@
-"""Resonance and Q-factor extraction for a 2D photonic-crystal cavity."""
+"""Resonance and Q-factor extraction for a 2D photonic-crystal cavity.
+
+The plotting parameters intentionally follow the original script/notebook so
+that regenerated geometry figures remain consistent with ``docs/images``.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +13,11 @@ import numpy as np
 
 from geometry import LineDefectCavity
 
+
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.size"] = 15
+plt.rcParams["xtick.direction"] = "in"
+plt.rcParams["ytick.direction"] = "in"
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR = SCRIPT_DIR / "fig"
@@ -96,10 +105,9 @@ def main() -> None:
     config = SimulationConfig()
     simulation = build_simulation(config)
 
-    fig = plt.figure(figsize=(10, 5), dpi=120)
+    fig = plt.figure(dpi=100)
     simulation.plot2D(ax=fig.gca())
-    fig.tight_layout()
-    fig.savefig(FIG_DIR / "cavity_geometry.png", dpi=180, bbox_inches="tight")
+    fig.savefig(FIG_DIR / "harminv_cavity_geometry.png")
     plt.show()
 
     harminv = mp.Harminv(
