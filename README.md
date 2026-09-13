@@ -15,7 +15,7 @@ Most calculations use normalized units with lattice constant `a = 1`. Frequencie
 
 ### 1. 2D photonic-crystal band structure
 
-[`mpb_band/band_2d_circular_hole.py`](mpb_band/band_2d_circular_hole.py) computes TE and TM bands for a triangular lattice of circular air holes in a dielectric background along the high-symmetry path `Γ → K → M → Γ`.
+[`mpb_band/band_2d_circular_hole.py`](mpb_band/band_2d_circular_hole.py) computes TE and TM bands for a triangular lattice of circular air holes in a dielectric background along the high-symmetry path `Γ → K → M → Γ`. The displayed figure follows the plotting configuration of the original notebook used to produce the reference image below.
 
 <table>
   <tr>
@@ -30,7 +30,7 @@ Most calculations use normalized units with lattice constant `a = 1`. Frequencie
 
 ### 2. W1 waveguide transmission
 
-[`waveguide/waveguide_w1/waveguide_w1.py`](waveguide/waveguide_w1/waveguide_w1.py) builds a 2D W1 line-defect waveguide and computes its transmission spectrum. The device flux is normalized by a straight-waveguide reference simulation using the same numerical settings.
+[`waveguide/waveguide_w1/waveguide_w1.py`](waveguide/waveguide_w1/waveguide_w1.py) builds a 2D W1 line-defect waveguide and computes its transmission spectrum. The device flux is normalized by a straight-waveguide reference simulation. Numerical and plotting defaults are kept consistent with the original notebook that generated the documentation figures.
 
 ![W1 waveguide geometry](docs/images/waveguide_w1_geometry.png)
 
@@ -58,6 +58,7 @@ pymeep_for_phc/
 │   └── images/
 ├── mpb_band/
 │   └── band_2d_circular_hole.py
+├── requirements.txt
 └── waveguide/
     ├── waveguide_w1/
     │   └── waveguide_w1.py
@@ -74,7 +75,17 @@ pymeep_for_phc/
 - Matplotlib
 - pandas for the standalone 3D example
 
-Meep and MPB are easiest to install from Conda packages. See the official [Meep installation guide](https://meep.readthedocs.io/en/latest/Installation/) for platform-specific instructions.
+Meep and MPB are best installed from conda-forge. For example:
+
+```bash
+conda create -n pymeep -c conda-forge python=3.11 pymeep
+conda activate pymeep
+pip install -r requirements.txt
+```
+
+`requirements.txt` contains the ordinary PyPI dependencies only. Meep/MPB are intentionally omitted from it because the supported installation is normally provided by the conda-forge `pymeep` package rather than a PyPI package named `meep`.
+
+See the official [Meep installation guide](https://meep.readthedocs.io/en/latest/Installation/) for platform-specific alternatives.
 
 ## Usage
 
@@ -119,4 +130,4 @@ Before a production run, convergence should be checked with respect to spatial r
 
 Each example writes generated data and figures to local output directories such as `out/`, `fig/`, or `outputs/`. These directories and common Meep/analysis artifacts are excluded by `.gitignore`.
 
-The figures under `docs/images/` are tracked intentionally for this README.
+The figures under `docs/images/` are tracked intentionally for this README. The plotting defaults in the corresponding examples intentionally preserve the original notebook styling so that regenerated figures are directly comparable to these references.
