@@ -1,119 +1,136 @@
-#%%
-if True:
-    import geometry
-    import parse_to_meep    
-    import numpy as np
-    import pandas as pd
-    import meep as mp
-    import matplotlib.pyplot as plt
-    #from matplotlib import rc
-    #rc('text', usetex=False)
-    plt.rcParams['font.family']= 'sans-serif'
-    #plt.rcParams['font.sans-serif'] = ['Arial']
-    plt.rcParams["font.size"] = 15 # 全体のフォントサイズが変更されます。
-    plt.rcParams['xtick.direction'] = 'in'#x軸の目盛線が内向き('in')か外向き('out')か双方向か('inout')
-    plt.rcParams['ytick.direction'] = 'in'#y軸の目盛線が内向き('in')か外向き('out')か双方向か('inout')
+"""Resonance and Q-factor extraction for a 2D photonic-crystal cavity.
+
+The plotting parameters intentionally follow the original script/notebook so
+that regenerated geometry figures remain consistent with ``docs/images``.
+"""
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import meep as mp
+import numpy as np
+
+from geometry import LineDefectCavity
 
 
-# mpirun -np 4 python cavity/eigenmode/harminv_cavity.py
-##### settings of geometry #####
-a = 1 # 0.4
-nx = 8 # 14
-ny = 30 # 50
-offset_x = 0
-offset_y = 0
-n_cavity = 5 # 3
-barrier = 4
-wgi = 0 #1.1
-holeshift = 0.2
-hslab=0 
-hall=0
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.size"] = 15
+plt.rcParams["xtick.direction"] = "in"
+plt.rcParams["ytick.direction"] = "in"
 
-eps_r=2.6**2
-fcen=0.25
-df=0.05
-resolution=16
-pml_buffer=4
-t_after_sources=3000
-
-##### settings of simulation #####
-# 2D cavity geometry
-cell = mp.Vector3(ny+pml_buffer, (nx+pml_buffer/2)*np.sqrt(3),hall)
-blk = mp.Block(size=mp.Vector3(ny+pml_buffer, (nx+pml_buffer/2)*np.sqrt(3), mp.inf), material=mp.Medium(epsilon=eps_r))
-ld = geometry.line_defect(a, nx, ny, offset_x, offset_y, n_cavity, barrier, wgi, holeshift)
-arr_obj = parse_to_meep.parse_geometry(ld)
-arr_geometry = [blk] + arr_obj
+SCRIPT_DIR = Path(__file__).resolve().parent
+FIG_DIR = SCRIPT_DIR / "fig"
+OUT_DIR = SCRIPT_DIR / "out"
+FIG_DIR.mkdir(exist_ok=True)
+OUT_DIR.mkdir(exist_ok=True)
 
 
-src = [
-    mp.Source(mp.GaussianSource(fcen, fwidth=df), mp.Hz, mp.Vector3(0.5), amplitude=1),
-    mp.Source(mp.GaussianSource(fcen, fwidth=df), mp.Hz, mp.Vector3(-0.5),amplitude=-1),
-       ]
-
-#src = [
-#    mp.Source(mp.GaussianSource(fcen, fwidth=df), mp.Hz, mp.Vector3(0), amplitude=1),
-#       ]
-
-#sym = [mp.Mirror(mp.Y, phase=-1), mp.Mirror(mp.X, phase=-1)]
-#sym = [mp.Mirror(mp.Y, phase=-1), mp.Mirror(mp.X, phase=1)]
-sym = [mp.Mirror(mp.Y, phase=-1)]
-#sym = []
-
-pml_layers = [mp.PML(1.0)]
-
-
-sim = mp.Simulation(
-    cell_size=cell,
-    geometry=arr_geometry,
-    boundary_layers=pml_layers,
-    sources=src,
-    symmetries=sym,
-    resolution=resolution,
-)
-
-# check
-f = plt.figure(dpi=100)
-sim.plot2D(ax=f.gca())
-plt.show()
+@dataclass(frozen=True)
+class SimulationConfig:
+    nx: int = 8
+    ny: int = 30
+    cavity_length: int = 5
+    end_hole_shift: float = 0.2
+    hole_radius: float = 0.25
+    effective_index: float = 2.6
+    center_frequency: float = 0.25
+    frequency_width: float = 0.05
+    resolution: int = 16
+    pml_thickness: float = 1.0
+    cell_buffer: float = 4.0
+    run_time_after_source: float = 3000.0
 
 
-##### Get eigen-modes #####
-h = mp.Harminv(mp.Hz, mp.Vector3(), fcen, df)
-sim.reset_meep()
-sim.run(mp.after_sources(h), until_after_sources=t_after_sources)
+def build_simulation(config: SimulationConfig) -> mp.Simulation:
+    """Construct the 2D line-defect cavity simulation."""
+    cell = mp.Vector3(
+        config.ny + config.cell_buffer,
+        (config.nx + config.cell_buffer / 2) * np.sqrt(3),
+        0,
+    )
 
-f = [m.freq for m in h.modes]
-q = [m.q for m in h.modes]
+    dielectric = mp.Medium(epsilon=config.effective_index**2)
+    background = mp.Block(size=mp.Vector3(mp.inf, mp.inf, mp.inf), material=dielectric)
 
-##### Plot eigen-modes #####
-for fiter, qiter in zip(f, q):
-    print(f"Resonant frequency: {fiter}, Q: {qiter}")
+    cavity = LineDefectCavity(
+        nx=config.nx,
+        ny=config.ny,
+        cavity_length=config.cavity_length,
+        end_hole_shift=config.end_hole_shift,
+        hole_radius=config.hole_radius,
+    )
 
-df_results = pd.DataFrame(np.array([f,q]).T)
-print(df_results)
-print("Done")
+    sources = [
+        mp.Source(
+            mp.GaussianSource(config.center_frequency, fwidth=config.frequency_width),
+            component=mp.Hz,
+            center=mp.Vector3(0.5, 0),
+            amplitude=1,
+        ),
+        mp.Source(
+            mp.GaussianSource(config.center_frequency, fwidth=config.frequency_width),
+            component=mp.Hz,
+            center=mp.Vector3(-0.5, 0),
+            amplitude=-1,
+        ),
+    ]
 
-#%%
-##### Get the field distributions of eigen-modes #####
-# To see the mode, we will simply run the simulation again with a narrow-band source.
-
-fcen_cavity=0.274542 #0.27111168664110774 # 0.27685639922705274
-df_cavity=0.01
-sim.reset_meep()
-h_cavity = mp.Harminv(mp.Hz, mp.Vector3(), fcen_cavity, df_cavity)
-sim.run(mp.after_sources(h_cavity), until_after_sources=t_after_sources)
-
-f_cavity = [m.freq for m in h_cavity.modes]
-q_cavity = [m.q for m in h_cavity.modes]
-df_cavity_results = pd.DataFrame(np.array([f_cavity,q_cavity]).T)
-print(df_cavity_results)
-
-f = plt.figure(dpi=150)
-sim.plot2D(ax=f.gca(), fields=mp.Hz)
-plt.show()
-
-print("Done")
-
+    return mp.Simulation(
+        cell_size=cell,
+        geometry=[background, *cavity.to_meep()],
+        boundary_layers=[mp.PML(config.pml_thickness)],
+        sources=sources,
+        symmetries=[mp.Mirror(mp.Y, phase=-1)],
+        resolution=config.resolution,
+    )
 
 
-# %%
+def save_modes(modes: list) -> None:
+    """Write the Harminv resonance table to CSV."""
+    rows = np.array([[mode.freq, mode.q] for mode in modes], dtype=float)
+    if rows.size == 0:
+        rows = np.empty((0, 2), dtype=float)
+
+    np.savetxt(
+        OUT_DIR / "harminv_modes.csv",
+        rows,
+        delimiter=",",
+        header="normalized_frequency,Q",
+        comments="",
+    )
+
+
+def main() -> None:
+    config = SimulationConfig()
+    simulation = build_simulation(config)
+
+    fig = plt.figure(dpi=100)
+    simulation.plot2D(ax=fig.gca())
+    fig.savefig(FIG_DIR / "harminv_cavity_geometry.png")
+    plt.show()
+
+    harminv = mp.Harminv(
+        mp.Hz,
+        mp.Vector3(),
+        config.center_frequency,
+        config.frequency_width,
+    )
+    simulation.run(
+        mp.after_sources(harminv),
+        until_after_sources=config.run_time_after_source,
+    )
+
+    save_modes(harminv.modes)
+
+    if not harminv.modes:
+        print("No resonances were found in the requested frequency window.")
+        return
+
+    print("Detected cavity modes:")
+    for mode in harminv.modes:
+        print(f"  f = {mode.freq:.8f}, Q = {mode.q:.3g}")
+
+
+if __name__ == "__main__":
+    main()
