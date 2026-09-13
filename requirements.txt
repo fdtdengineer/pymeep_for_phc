@@ -1,0 +1,9 @@
+# Python-side dependencies for the examples in this repository.
+#
+# Meep and MPB are intentionally not listed here: the supported Python package
+# is typically installed from conda-forge as `pymeep`, rather than from PyPI.
+# See README.md for the recommended installation order.
+
+numpy>=1.24
+matplotlib>=3.7
+pandas>=2.0
