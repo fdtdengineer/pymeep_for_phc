@@ -1,179 +1,202 @@
-#%%
+"""Transmission spectrum of a 2D W1 photonic-crystal waveguide.
+
+A triangular lattice of air holes is etched into an effective-index dielectric.
+The output flux is normalized by a straight-waveguide reference simulation with
+the same cell, source, monitor, and absorbing-boundary settings.
+"""
+
+from dataclasses import dataclass
+from pathlib import Path
 import time
-import math
+
+import matplotlib.pyplot as plt
 import meep as mp
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+FIG_DIR = SCRIPT_DIR / "fig"
+OUT_DIR = SCRIPT_DIR / "out"
+FIG_DIR.mkdir(exist_ok=True)
+OUT_DIR.mkdir(exist_ok=True)
 
-from pathlib import Path
 
-script_dir = Path(__file__).resolve().parent
-fig_dir = script_dir / "fig"
-out_dir = script_dir / "out"
-fig_dir.mkdir(exist_ok=True)
-out_dir.mkdir(exist_ok=True)
+@dataclass(frozen=True)
+class SimulationConfig:
+    """Numerical and geometric parameters in units of the lattice constant."""
 
-#path = "output/"
+    phc_length: int = 40
+    phc_width: int = 10
+    connection_length: float = 5.0
+    waveguide_width: float = 1.0
+    hole_radius: float = 0.25
+    effective_index: float = 2.6
+    center_frequency: float = 0.30
+    frequency_width: float = 0.10
+    num_frequencies: int = 500
+    resolution: int = 16
+    pml_thickness: float = 1.0
+    decay_threshold: float = 1e-7
 
-def phc_trans(use_photonic_crystal = True, photonic_crystal_length = 100, decay_check=0, decay_time=500):
-    """
-    <変数の説明>
-    PhC...PhC(フォトニック決勝)を配置するかどうか。Falseで直線導波路
-    photonic_crystal_length...PhC導波方向の長さ
-    photonic_crystal_width...PhC垂直方向の幅。PMLと被ってるので適当。
-    connection_waveguide...PhCに接続するSi導波路(棒の部分)の長さ
-    wgi...導波路の幅を調整する。1で丸穴一個分空いてることを意味する。0.7とかにすると狭くなってバンドの形が変わる、っていうのはDaii君の研究とも絡む。
-    r...穴の半径。ふつうはa/4くらい。meepだと格子定数は1で固定だから、格子定数との比を入力すればOK
-    n_eff...屈折率。2次元だと2.5~2.7くらいにしておくと3次元のSi系(n_si=3.48)と結果が近くなる。違う材料を使うときは要調整、通常はdefaultで大丈夫。
-    fcen...入力光（ガウシアンビーム）の中心周波数。知りたいPhCバンドの周波数近くに設定する
-    df...入力光（ガウシアンビーム）の半値幅（で合ってる？）
-    nfreq...入力光（ガウシアンビーム）のきめ細かさ
-    resolution...メッシュの細かさ。2^nにすると計算が軽くなるらしい。
-    decay_time...反復計算数。小さいと誤差が増え、大きいと時間がかかる。sim.run(until_after_sources=...)で計算時間を見積もってから変えるとよさそう
-    decay_check...解の収束をどこで判定するか、位置を指定。defaultでOK
 
-    <備考>
-    ・meepでは格子定数aはパラメータに含まれないので設定不要
-    　誘電体を使うときは入力するらしい（スケール依存性が出るから）
-    ・THzやnmは使用せず、すべて規格化周波数で入力する (周波数はωa/2πcで直す)
-    """
-    ##### setting of parameters #####
-    photonic_crystal_width = 10
-    connection_waveguide = 5
-    wgi = 1
-    r = 1/4
-    n_eff = 2.6
-    fcen = 0.3 
-    df = 0.1
-    nfreq = 500 # number of frequencies at which to compute flux
-    resolution = 16
-    
-    #####
-    length = photonic_crystal_length + 2*connection_waveguide
-    width = photonic_crystal_width
-    nx = int(photonic_crystal_length)
-    ny = int(photonic_crystal_width)
-    eps = n_eff**2
+@dataclass(frozen=True)
+class Spectrum:
+    frequencies: np.ndarray
+    flux: np.ndarray
 
-    ##### settings of geometry #####
-    # initialization
-    cell = mp.Vector3(length,width*np.sqrt(3),0)
 
-    # Si waveguide
-    waveguide = mp.Block(mp.Vector3(mp.inf,wgi*np.sqrt(3),mp.inf),
-                         center=mp.Vector3(),
-                         material=mp.Medium(epsilon=eps))
-    geometry = [waveguide]
+def build_geometry(config: SimulationConfig, use_photonic_crystal: bool) -> tuple[mp.Vector3, list]:
+    """Build the simulation cell and geometry for the reference or W1 device."""
+    length = config.phc_length + 2 * config.connection_length
+    width = config.phc_width * np.sqrt(3)
+    epsilon = config.effective_index**2
 
-    # PhC
-    if use_photonic_crystal:
-        # slab
-        blk = mp.Block(mp.Vector3(photonic_crystal_length,photonic_crystal_width*np.sqrt(3),mp.inf),
-                             center=mp.Vector3(),
-                             material=mp.Medium(epsilon=eps))
+    cell = mp.Vector3(length, width, 0)
+    material = mp.Medium(epsilon=epsilon)
 
-        geometry.append(blk)
-        
-        # arrange air-holes
-        for j in range(ny):
-            for i in range(nx+1):
-                shift_y = np.sqrt(3)
-                geometry.append(mp.Cylinder(r, center=mp.Vector3(i-nx/2, wgi*np.sqrt(3)/2 + shift_y*j)))
-                geometry.append(mp.Cylinder(r, center=mp.Vector3(i-nx/2, -(wgi*np.sqrt(3)/2 + shift_y*j))))
+    geometry = [
+        mp.Block(
+            size=mp.Vector3(mp.inf, config.waveguide_width * np.sqrt(3), mp.inf),
+            material=material,
+        )
+    ]
 
-                geometry.append(mp.Cylinder(r, center=mp.Vector3(i-(nx+1)/2, wgi*np.sqrt(3)/2 + shift_y*(j+1/2))))
-                geometry.append(mp.Cylinder(r, center=mp.Vector3(i-(nx+1)/2, -(wgi*np.sqrt(3)/2 + shift_y*(j+1/2)))))
-                #geometry.append(mp.Cylinder(r, center=mp.Vector3(i-N/2,-wgi*np.sqrt(3)/2)))
-    
-    # Gaussian
-    sources = [mp.Source(mp.GaussianSource(fcen, fwidth=df),
-                         component=mp.Hz,
-                         center=mp.Vector3(-length/2 +1,0),
-                         size=mp.Vector3(0,wgi*np.sqrt(3)))
-              ]
+    if not use_photonic_crystal:
+        return cell, geometry
 
-    # PML
-    pml_layers = [mp.PML(1.0)]
+    geometry.append(
+        mp.Block(
+            size=mp.Vector3(config.phc_length, width, mp.inf),
+            material=material,
+        )
+    )
 
-    # z-symmetry (上下対称なら計算が軽くなる。対称性が無いなら消す)
-    sym = [mp.Mirror(mp.Y, phase=-1)]
-    
+    nx = int(config.phc_length)
+    ny = int(config.phc_width)
+    half_gap = config.waveguide_width * np.sqrt(3) / 2
 
-    ####
-    sim = mp.Simulation(cell_size=cell,
-                        boundary_layers=pml_layers,
-                        geometry=geometry,
-                        sources=sources,
-                        symmetries=sym,
-                        resolution=resolution)
+    for row in range(ny):
+        row_offset = np.sqrt(3) * row
+        staggered_offset = np.sqrt(3) * (row + 0.5)
 
-    #tran_in = mp.FluxRegion(center=mp.Vector3(-photonic_crystal_length/2-1,0),size=mp.Vector3(0, 2*wgi))
-    tran_out = mp.FluxRegion(center=mp.Vector3(length/2-3/2,0),size=mp.Vector3(0, 2*wgi))
-    #trans_in = sim.add_flux(fcen, df, nfreq, tran_in)
-    trans_out = sim.add_flux(fcen, df, nfreq, tran_out)
+        for col in range(nx + 1):
+            x_a = col - nx / 2
+            x_b = col - (nx + 1) / 2
 
-    # Plot geometry
-    f = plt.figure(dpi=100)
-    sim.plot2D(ax=f.gca())
+            for x, y in (
+                (x_a, half_gap + row_offset),
+                (x_a, -(half_gap + row_offset)),
+                (x_b, half_gap + staggered_offset),
+                (x_b, -(half_gap + staggered_offset)),
+            ):
+                geometry.append(
+                    mp.Cylinder(
+                        radius=config.hole_radius,
+                        center=mp.Vector3(x, y),
+                        material=mp.air,
+                    )
+                )
+
+    return cell, geometry
+
+
+def run_spectrum(config: SimulationConfig, use_photonic_crystal: bool, plot_geometry: bool = False) -> Spectrum:
+    """Run one Meep simulation and return the output-flux spectrum."""
+    cell, geometry = build_geometry(config, use_photonic_crystal)
+    length = cell.x
+    source_x = -length / 2 + config.pml_thickness + 1.0
+    monitor_x = length / 2 - config.pml_thickness - 0.5
+
+    sources = [
+        mp.Source(
+            mp.GaussianSource(config.center_frequency, fwidth=config.frequency_width),
+            component=mp.Hz,
+            center=mp.Vector3(source_x, 0),
+            size=mp.Vector3(0, config.waveguide_width * np.sqrt(3)),
+        )
+    ]
+
+    simulation = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[mp.PML(config.pml_thickness)],
+        geometry=geometry,
+        sources=sources,
+        symmetries=[mp.Mirror(mp.Y, phase=-1)],
+        resolution=config.resolution,
+    )
+
+    monitor_region = mp.FluxRegion(
+        center=mp.Vector3(monitor_x, 0),
+        size=mp.Vector3(0, 2 * config.waveguide_width),
+    )
+    monitor = simulation.add_flux(
+        config.center_frequency,
+        config.frequency_width,
+        config.num_frequencies,
+        monitor_region,
+    )
+
+    if plot_geometry:
+        fig = plt.figure(figsize=(10, 4), dpi=120)
+        simulation.plot2D(ax=fig.gca())
+        fig.tight_layout()
+        suffix = "phc" if use_photonic_crystal else "reference"
+        fig.savefig(FIG_DIR / f"geometry_{suffix}.png", dpi=180, bbox_inches="tight")
+        plt.show()
+
+    simulation.run(
+        until_after_sources=mp.stop_when_fields_decayed(
+            50,
+            mp.Hz,
+            mp.Vector3(monitor_x, 0),
+            config.decay_threshold,
+        )
+    )
+
+    frequencies = np.asarray(mp.get_flux_freqs(monitor), dtype=float)
+    flux = np.asarray(mp.get_fluxes(monitor), dtype=float)
+    simulation.reset_meep()
+    return Spectrum(frequencies=frequencies, flux=flux)
+
+
+def main() -> None:
+    config = SimulationConfig()
+    start = time.perf_counter()
+
+    reference = run_spectrum(config, use_photonic_crystal=False)
+    device = run_spectrum(config, use_photonic_crystal=True, plot_geometry=True)
+
+    if not np.allclose(reference.frequencies, device.frequencies):
+        raise RuntimeError("Reference and device frequency grids do not match.")
+
+    transmittance = np.divide(
+        device.flux,
+        reference.flux,
+        out=np.full_like(device.flux, np.nan),
+        where=np.abs(reference.flux) > 1e-14,
+    )
+
+    data = np.column_stack((device.frequencies, transmittance))
+    np.savetxt(
+        OUT_DIR / "transmittance.csv",
+        data,
+        delimiter=",",
+        header="normalized_frequency,transmittance",
+        comments="",
+    )
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(device.frequencies, transmittance, color="black", linewidth=1.5)
+    ax.set_xlabel(r"Normalized frequency $\omega a / 2\pi c$")
+    ax.set_ylabel("Transmittance")
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "transmittance.png", dpi=180, bbox_inches="tight")
     plt.show()
-    # show geometry
-    #f = plt.figure(dpi=150)
-    #sim.plot2D(ax=f.gca())
-    # plt.show()
-    if use_photonic_crystal:
-        filename = "geometry_phc"
-    else:
-        filename = "geometry_siwaveguide"
-    #plt.savefig(fig_dir / (filename + ".png"))
+
+    elapsed = time.perf_counter() - start
+    print(f"Completed reference and W1 simulations in {elapsed:.1f} s")
 
 
-    # sim.run(until=decay_time)
-    # 電場が減衰するまでしっかり計算する場合は、下を使う
-    sim.run(until_after_sources=mp.stop_when_fields_decayed(50, mp.Hz, mp.Vector3(decay_check), 1e-7))
-
-    freqs = mp.get_flux_freqs(trans_out)
-    #psd_in = mp.get_fluxes(trans_in)
-    psd_out = mp.get_fluxes(trans_out)
-
-    return freqs, psd_out
-
-
-if __name__ == "__main__":  
-    time_start = time.perf_counter()
-
-    a = 400
-    c_const = 299792458
-    freqs_wo, psd_out_wo = phc_trans(use_photonic_crystal = False, photonic_crystal_length = 20, decay_check=10, decay_time=500)
-    freqs_w,  psd_out_w  = phc_trans(use_photonic_crystal = True, photonic_crystal_length = 40, decay_check=20, decay_time=10000)
-
-    freqs = a / np.array(freqs_w)
-
-
-    df = pd.DataFrame()
-    df["normalized_frequency"] = np.array(freqs_w)
-    df["wavelength"] = freqs
-    df["transmittance"] = np.array(psd_out_w)/np.array(psd_out_wo)
-    df.to_csv(out_dir / "transmittance1.csv", index=False)
-
-    """
-    plt.plot(freqs, np.array(psd_out_w)/np.array(psd_out_wo))
-    plt.scatter(freqs, np.array(psd_out_w)/np.array(psd_out_wo))
-    plt.xlabel("Frequency[c/a]")
-    plt.ylabel("Transmittance[c/a]")
-    #plt.xlim([0.28,0.30])
-    plt.yscale('log')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(fig_dir / "phcwaveguide_transmittance1.png")
-    """
-    time_end = time.perf_counter()
-    time = time_end - time_start
-    print("The necessary time: {:.3f}s".format(time))
-
-    f = open(out_dir / 'totaltime1.txt', 'w')
-    f.write("The necessary time: {:.3f}s".format(time))
-    f.close()
-# %%
+if __name__ == "__main__":
+    main()
