@@ -1,11 +1,12 @@
 """Transmission spectrum of a 2D W1 photonic-crystal waveguide.
 
 A triangular lattice of air holes is etched into an effective-index dielectric.
-The output flux is normalized by a straight-waveguide reference simulation with
-the same cell, source, monitor, and absorbing-boundary settings.
+The output flux is normalized by a straight-waveguide reference simulation.
+Plotting settings intentionally follow the original notebook so that regenerated
+figures remain visually consistent with ``docs/images``.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import time
 
@@ -13,6 +14,17 @@ import matplotlib.pyplot as plt
 import meep as mp
 import numpy as np
 
+
+FS = 18
+plt.rcParams.update(
+    {
+        "font.family": "Arial",
+        "font.sans-serif": ["Arial"],
+        "font.size": FS,
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+    }
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIG_DIR = SCRIPT_DIR / "fig"
@@ -76,18 +88,15 @@ def build_geometry(config: SimulationConfig, use_photonic_crystal: bool) -> tupl
     half_gap = config.waveguide_width * np.sqrt(3) / 2
 
     for row in range(ny):
-        row_offset = np.sqrt(3) * row
-        staggered_offset = np.sqrt(3) * (row + 0.5)
-
+        shift_y = np.sqrt(3)
         for col in range(nx + 1):
             x_a = col - nx / 2
             x_b = col - (nx + 1) / 2
-
             for x, y in (
-                (x_a, half_gap + row_offset),
-                (x_a, -(half_gap + row_offset)),
-                (x_b, half_gap + staggered_offset),
-                (x_b, -(half_gap + staggered_offset)),
+                (x_a, half_gap + shift_y * row),
+                (x_a, -(half_gap + shift_y * row)),
+                (x_b, half_gap + shift_y * (row + 0.5)),
+                (x_b, -(half_gap + shift_y * (row + 0.5))),
             ):
                 geometry.append(
                     mp.Cylinder(
@@ -100,18 +109,21 @@ def build_geometry(config: SimulationConfig, use_photonic_crystal: bool) -> tupl
     return cell, geometry
 
 
-def run_spectrum(config: SimulationConfig, use_photonic_crystal: bool, plot_geometry: bool = False) -> Spectrum:
-    """Run one Meep simulation and return the output-flux spectrum."""
+def run_spectrum(
+    config: SimulationConfig,
+    use_photonic_crystal: bool,
+    decay_check: float,
+    plot_geometry: bool = False,
+) -> Spectrum:
+    """Run one Meep simulation and return its output-flux spectrum."""
     cell, geometry = build_geometry(config, use_photonic_crystal)
     length = cell.x
-    source_x = -length / 2 + config.pml_thickness + 1.0
-    monitor_x = length / 2 - config.pml_thickness - 0.5
 
     sources = [
         mp.Source(
             mp.GaussianSource(config.center_frequency, fwidth=config.frequency_width),
             component=mp.Hz,
-            center=mp.Vector3(source_x, 0),
+            center=mp.Vector3(-length / 2 + 1, 0),
             size=mp.Vector3(0, config.waveguide_width * np.sqrt(3)),
         )
     ]
@@ -126,7 +138,7 @@ def run_spectrum(config: SimulationConfig, use_photonic_crystal: bool, plot_geom
     )
 
     monitor_region = mp.FluxRegion(
-        center=mp.Vector3(monitor_x, 0),
+        center=mp.Vector3(length / 2 - 1.5, 0),
         size=mp.Vector3(0, 2 * config.waveguide_width),
     )
     monitor = simulation.add_flux(
@@ -137,18 +149,16 @@ def run_spectrum(config: SimulationConfig, use_photonic_crystal: bool, plot_geom
     )
 
     if plot_geometry:
-        fig = plt.figure(figsize=(10, 4), dpi=120)
+        fig = plt.figure(dpi=100)
         simulation.plot2D(ax=fig.gca())
-        fig.tight_layout()
-        suffix = "phc" if use_photonic_crystal else "reference"
-        fig.savefig(FIG_DIR / f"geometry_{suffix}.png", dpi=180, bbox_inches="tight")
+        fig.savefig(FIG_DIR / "geometry_phc.png")
         plt.show()
 
     simulation.run(
         until_after_sources=mp.stop_when_fields_decayed(
             50,
             mp.Hz,
-            mp.Vector3(monitor_x, 0),
+            mp.Vector3(decay_check),
             config.decay_threshold,
         )
     )
@@ -163,8 +173,17 @@ def main() -> None:
     config = SimulationConfig()
     start = time.perf_counter()
 
-    reference = run_spectrum(config, use_photonic_crystal=False)
-    device = run_spectrum(config, use_photonic_crystal=True, plot_geometry=True)
+    reference = run_spectrum(
+        replace(config, phc_length=20),
+        use_photonic_crystal=False,
+        decay_check=10,
+    )
+    device = run_spectrum(
+        replace(config, phc_length=40),
+        use_photonic_crystal=True,
+        decay_check=20,
+        plot_geometry=True,
+    )
 
     if not np.allclose(reference.frequencies, device.frequencies):
         raise RuntimeError("Reference and device frequency grids do not match.")
@@ -176,22 +195,26 @@ def main() -> None:
         where=np.abs(reference.flux) > 1e-14,
     )
 
-    data = np.column_stack((device.frequencies, transmittance))
+    lattice_constant_nm = 400.0
+    wavelength_nm = lattice_constant_nm / device.frequencies
+    data = np.column_stack((device.frequencies, wavelength_nm, transmittance))
     np.savetxt(
         OUT_DIR / "transmittance.csv",
         data,
         delimiter=",",
-        header="normalized_frequency,transmittance",
+        header="normalized_frequency,wavelength_nm,transmittance",
         comments="",
     )
 
-    fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(device.frequencies, transmittance, color="black", linewidth=1.5)
-    ax.set_xlabel(r"Normalized frequency $\omega a / 2\pi c$")
-    ax.set_ylabel("Transmittance")
-    ax.grid(alpha=0.25)
-    fig.tight_layout()
-    fig.savefig(FIG_DIR / "transmittance.png", dpi=180, bbox_inches="tight")
+    plt.figure(figsize=(5.4, 4), dpi=100)
+    plt.plot(wavelength_nm, transmittance, color="#0072bc")
+    plt.scatter(wavelength_nm, transmittance, color="#0072bc")
+    plt.xlabel("Frequency [c/a]")
+    plt.ylabel("Transmittance [c/a]")
+    plt.xlim([wavelength_nm[-1], wavelength_nm[0]])
+    plt.yscale("log")
+    plt.tight_layout()
+    plt.savefig(FIG_DIR / "phcwaveguide_transmittance1.png")
     plt.show()
 
     elapsed = time.perf_counter() - start
